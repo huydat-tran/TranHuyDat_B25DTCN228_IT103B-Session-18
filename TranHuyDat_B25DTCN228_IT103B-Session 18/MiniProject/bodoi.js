@@ -12,6 +12,12 @@ let currentID = 2;
 
 const form = document.querySelector("#productForm");
 const tbody = document.querySelector("#productTable");
+const cancelBtn = document.querySelector("#cancelBtn");
+const deleteAll = document.querySelector("#clearAllBtn");
+const searchInput = document.querySelector("#searchInput");
+const filterCategory = document.querySelector("#filterCategory");
+
+let editId = null;
 
 const saveToLocal = () => {
   localStorage.setItem("products", JSON.stringify(products));
@@ -26,8 +32,9 @@ const loadFromLocal = () => {
   if (id) currentID = +id;
 };
 
-let updateUI = () => {
-  tbody.innerHTML = renderList(products);
+let updateUI = (data = products) => {
+  tbody.innerHTML = renderList(data);
+  updateStats(data);
 };
 
 const formatMoney = (money) => {
@@ -93,29 +100,160 @@ form.addEventListener("submit", (e) => {
 
   if (!validateForm(name, price, quantity, category)) return;
 
-  const product = {
-    id: currentID++,
-    name,
-    price,
-    category,
-    quantity,
-    description,
-  };
+  if (editId !== null) {
+    const product = products.find((p) => p.id === editId);
 
-  products.push(product);
+    product.name = name;
+    product.price = price;
+    product.category = category;
+    product.quantity = quantity;
+    product.description = description;
 
+    editId = null;
+    document.querySelector("#submitBtn").textContent = "➕ Thêm Sản Phẩm";
+
+    Swal.fire({
+      title: "Success!!",
+      text: "Đã sửa thành công",
+      imageUrl:
+        "https://tse4.mm.bing.net/th/id/OIP.1T3xv8d4MU6JTfgxMmgyQgHaHa?pid=Api&h=220&P=0",
+      imageWidth: 400,
+      imageHeight: 300,
+      imageAlt: "Custom image",
+    });
+  } else {
+    const product = {
+      id: currentID++,
+      name,
+      price,
+      category,
+      quantity,
+      description,
+    };
+
+    products.push(product);
+
+    Swal.fire({
+      title: "Success!!",
+      text: "Đã thêm thành công",
+      imageUrl:
+        "https://tse4.mm.bing.net/th/id/OIP.1T3xv8d4MU6JTfgxMmgyQgHaHa?pid=Api&h=220&P=0",
+      imageWidth: 400,
+      imageHeight: 300,
+      imageAlt: "Custom image",
+    });
+  }
   saveToLocal();
   updateUI();
+  form.reset();
+});
+
+const editProduct = (id) => {
+  const product = products.find((p) => p.id === id);
+
+  document.querySelector("#productName").value = product.name;
+  document.querySelector("#productPrice").value = product.price;
+  document.querySelector("#productQuantity").value = product.quantity;
+  document.querySelector("#productCategory").value = product.category;
+  document.querySelector("#productDescription").value = product.description;
+
+  editId = id;
+  document.querySelector("#submitBtn").textContent = "Cập nhập";
+  cancelBtn.style.display = "inline-block";
+};
+
+const deleteProduct = (id) => {
+  products = products.filter((p) => p.id !== id);
   Swal.fire({
     title: "Success!!",
-    text: "Đã thêm thành công",
+    text: "Xóa thành công",
     imageUrl:
-      "https://tse4.mm.bing.net/th/id/OIP.1T3xv8d4MU6JTfgxMmgyQgHaHa?pid=Api&h=220&P=0",
+      "https://facts.net/wp-content/uploads/2023/10/22-astounding-facts-about-johnny-sins-1696433310.jpg",
     imageWidth: 400,
     imageHeight: 300,
     imageAlt: "Custom image",
   });
-  form.reset();
+  updateUI();
+  saveToLocal();
+};
+
+tbody.addEventListener("click", (e) => {
+  const tr = e.target.closest("tr");
+
+  if (!tr) return;
+
+  const id = +tr.dataset.id;
+
+  if (e.target.classList.contains("btn-edit")) editProduct(id);
+  if (e.target.classList.contains("btn-delete")) deleteProduct(id);
 });
 
+cancelBtn.addEventListener("click", () => {
+  editId = null;
+  form.reset();
+  document.querySelector("#submitBtn").textContent = "➕ Thêm Sản Phẩm";
+});
+
+deleteAll.addEventListener("click", (e) => {
+  if (products.length === 0) {
+    Swal.fire({
+      icon: "error",
+      title: "Oops...",
+      text: "Không có gì để xóa",
+    });
+    return;
+  }
+
+  if (!confirm("Bạn có chắc là muốn xóa hết dữ liệu không")) return;
+
+  products = [];
+  localStorage.removeItem("products");
+  localStorage.removeItem("currentID");
+
+  updateUI();
+  Swal.fire({
+    title: "Success!!",
+    text: "Xóa thành công",
+    imageUrl:
+      "https://facts.net/wp-content/uploads/2023/10/22-astounding-facts-about-johnny-sins-1696433310.jpg",
+    imageWidth: 400,
+    imageHeight: 300,
+    imageAlt: "Custom image",
+  });
+});
+
+const handleFilter = () => {
+  const keyword = searchInput.value.toLowerCase().trim();
+  const category = filterCategory.value;
+
+  let result = products;
+
+  // search
+  if (keyword) {
+    result = result.filter((p) => p.name.toLowerCase().includes(keyword));
+  }
+
+  // filter category
+  if (category && category !== "all") {
+    result = result.filter((p) => p.category === category);
+  }
+
+  updateUI(result);
+};
+
+searchInput.addEventListener("input", handleFilter);
+filterCategory.addEventListener("change", handleFilter);
+
+const updateStats = (data = products) => {
+  const totalProducts = data.length;
+  const totalQuantity = data.reduce((sum, p) => sum + p.quantity, 0);
+
+  const totalValue = data.reduce((sum, p) => sum + p.price * p.quantity, 0);
+
+  document.querySelector("#totalProducts").textContent = totalProducts;
+  document.querySelector("#totalQuantity").textContent = totalQuantity;
+  document.querySelector("#totalValue").textContent = formatMoney(totalValue);
+};
+
+loadFromLocal();
 updateUI();
